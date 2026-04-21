@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(xargs grep *)",
+      "Bash(node /c/dev/quoteIAmanager/scripts/patch-builder.js)",
+      "Bash(grep -v \"^$\")",
+      "Bash(node -e ' *)",
+      "Bash(node scripts/patch-builder.js)",
+      "Bash(python3 -c \"import sys,json; [print\\(json.dumps\\(json.loads\\(l\\), indent=2\\)[:400]\\) for l in sys.stdin]\")",
+      "Bash(python3 -c \"import sys,json; [print\\(json.dumps\\(json.loads\\(l\\), indent=2\\)[:600]\\) for l in sys.stdin]\")",
+      "Bash(node *)",
+      "WebSearch",
+      "WebFetch(domain:brand.github.com)",
+      "WebFetch(domain:cognition.ai)",
+      "WebFetch(domain:kiro.dev)"
+    ]
+  }
+}

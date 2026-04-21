@@ -1,0 +1,71 @@
+{
+  "name": "quote-ia-manager",
+  "version": "1.0.0",
+  "description": "Gerenciador de cotas de consumo de IAs",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "electron:dev": "concurrently \"vite\" \"wait-on tcp:5173 && electron .\"",
+    "electron:build": "npm run build && node scripts/patch-builder.js && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win",
+    "postinstall": "node scripts/patch-builder.js",
+    "preview": "vite preview"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "date-fns": "^3.6.0",
+    "lucide-react": "^0.400.0",
+    "recharts": "^2.12.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.19",
+    "concurrently": "^8.2.2",
+    "cross-env": "^10.1.0",
+    "electron": "^31.1.0",
+    "electron-builder": "^24.13.3",
+    "postcss": "^8.4.39",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwindcss": "^3.4.6",
+    "typescript": "^5.5.3",
+    "vite": "^5.3.3",
+    "vite-plugin-electron": "^0.28.7",
+    "vite-plugin-electron-renderer": "^0.14.5",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.quoteiamanager.app",
+    "productName": "Quote IA Manager",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**",
+      "dist-electron/**"
+    ],
+    "win": {
+      "target": [
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "signingHashAlgorithms": null,
+      "sign": null
+    },
+    "mac": {
+      "target": "dmg",
+      "identity": null
+    },
+    "linux": {
+      "target": "AppImage"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
