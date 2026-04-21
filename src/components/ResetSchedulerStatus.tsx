@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Clock, CheckCircle, AlertCircle, Play, Pause, RefreshCw } from 'lucide-react'
 import { useDb } from '../hooks/useDb'
 
@@ -30,7 +30,7 @@ export function ResetSchedulerStatus() {
   const loadStatus = async () => {
     try {
       const schedulerStatus = await invoke('reset:getStatus')
-      setStatus(schedulerStatus)
+      setStatus(schedulerStatus as SchedulerStatus)
     } catch (error) {
       console.error('Error loading scheduler status:', error)
     }
@@ -39,7 +39,7 @@ export function ResetSchedulerStatus() {
   const handleTriggerCheck = async () => {
     setLoading(true)
     try {
-      const result = await invoke('reset:triggerCheck')
+      const result = await invoke('reset:triggerCheck') as { success: boolean; error?: string }
       if (result.success) {
         setLastAction('Verificação manual acionada com sucesso')
         setTimeout(() => setLastAction(''), 3000)
@@ -60,8 +60,7 @@ export function ResetSchedulerStatus() {
     if (!nextReset) return 'Não agendado'
     
     const date = new Date(nextReset)
-    const now = new Date()
-    
+
     if (minutesUntil !== null) {
       if (minutesUntil <= 0) return 'Atrasado'
       if (minutesUntil <= 60) return `Em ${minutesUntil} minutos`

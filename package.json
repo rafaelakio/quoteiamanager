@@ -47,9 +47,11 @@
     },
     "files": [
       "dist/**",
-      "dist-electron/**"
+      "dist-electron/**",
+      "scripts/devin-query.js"
     ],
     "win": {
+      "icon": "build/icon.ico",
       "target": [
         { "target": "portable", "arch": ["x64"] }
       ],

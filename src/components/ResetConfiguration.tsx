@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react'
-import { Calendar, Clock, RotateCcw, Trash2, Save, Plus, AlertCircle, CheckCircle } from 'lucide-react'
-import { ProviderResetConfig, Provider, TimezoneInfo } from '../types'
+import { useState, useEffect } from 'react'
+import { Trash2, Save, AlertCircle, CheckCircle } from 'lucide-react'
+import { ProviderResetConfig, Provider } from '../types'
 import { useDb } from '../hooks/useDb'
 import { DatePicker } from './DatePicker'
 import { TimezoneSelector } from './TimezoneSelector'
@@ -24,12 +24,10 @@ export function ResetConfiguration({ provider, onClose, onSave }: ResetConfigura
     isActive: true
   })
   const [existingConfig, setExistingConfig] = useState<ProviderResetConfig | null>(null)
-  const [timezones, setTimezones] = useState<TimezoneInfo[]>([])
   const [showSuccess, setShowSuccess] = useState(false)
 
   useEffect(() => {
     loadExistingConfig()
-    loadTimezones()
   }, [provider.id])
 
   const loadExistingConfig = async () => {
@@ -41,15 +39,6 @@ export function ResetConfiguration({ provider, onClose, onSave }: ResetConfigura
       }
     } catch (error) {
       console.error('Error loading existing config:', error)
-    }
-  }
-
-  const loadTimezones = async () => {
-    try {
-      const zones = await invoke('db:getTimezones') as TimezoneInfo[]
-      setTimezones(zones)
-    } catch (error) {
-      console.error('Error loading timezones:', error)
     }
   }
 

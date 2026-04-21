@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { Calendar, Clock } from 'lucide-react'
+import { useState } from 'react'
+import { Clock } from 'lucide-react'
 
 interface DatePickerProps {
   value: string // HH:MM format

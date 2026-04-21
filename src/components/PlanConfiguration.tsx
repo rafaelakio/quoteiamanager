@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Settings, Check, X, Info, Star, Zap, Shield } from 'lucide-react'
+import { useState } from 'react'
+import { Settings, Check, X, Info, Star } from 'lucide-react'
 import type { Provider, ProviderPlan } from '../types'
 
 // Planos pré-definidos para cada provider
