@@ -6,6 +6,183 @@ Obrigado pelo seu interesse em contribuir com o Quote Ia Manager! Este documento
 
 Este projeto segue nosso [Código de Conduta](./CODE_OF_CONDUCT.md). Por favor, leia e siga estas diretrizes em todas as suas interações.
 
+## 🌿 Fluxo de Trabalho GitFlow
+
+Este projeto utiliza o modelo GitFlow para gestão de branches. Abaixo estão os fluxos padrão para diferentes tipos de trabalho.
+
+### Criar Nova Funcionalidade (Feature)
+
+```bash
+# 1. Sincronize com a branch develop
+git checkout develop
+git pull origin develop
+
+# 2. Crie uma nova branch feature
+git checkout -b feature/nova-funcionalidade
+
+# 3. Desenvolva sua funcionalidade
+# ... faça suas alterações ...
+
+# 4. Commit com mensagem convencional
+git add .
+git commit -m "feat: add amazing feature"
+
+# 5. Envie para o repositório remoto
+git push origin feature/nova-funcionalidade
+
+# 6. Abra Pull Request: feature/nova-funcionalidade → develop
+```
+
+### Correção de Bug (Bugfix)
+
+```bash
+# 1. Sincronize com a branch develop
+git checkout develop
+git pull origin develop
+
+# 2. Crie uma nova branch bugfix
+git checkout -b bugfix/corrigir-erro
+
+# 3. Corrija o bug
+# ... faça suas correções ...
+
+# 4. Commit com mensagem convencional
+git add .
+git commit -m "fix: resolve validation error"
+
+# 5. Envie para o repositório remoto
+git push origin bugfix/corrigir-erro
+
+# 6. Abra Pull Request: bugfix/corrigir-erro → develop
+```
+
+### Hotfix em Produção
+
+```bash
+# 1. Sincronize com a branch main
+git checkout main
+git pull origin main
+
+# 2. Crie uma nova branch hotfix
+git checkout -b hotfix/corrigir-critico
+
+# 3. Corrija o problema crítico
+# ... faça as correções ...
+
+# 4. Commit com mensagem convencional
+git add .
+git commit -m "hotfix: fix security vulnerability"
+
+# 5. Merge em main
+git checkout main
+git merge --no-ff hotfix/corrigir-critico
+git tag v1.2.1
+
+# 6. Envie para produção
+git push origin main --tags
+
+# 7. Também merge em develop para não perder a correção
+git checkout develop
+git merge --no-ff hotfix/corrigir-critico
+git push origin develop
+
+# 8. Delete a branch hotfix
+git branch -d hotfix/corrigir-critico
+git push origin --delete hotfix/corrigir-critico
+```
+
+### Preparação de Release
+
+```bash
+# 1. Crie branch release a partir da develop
+git checkout develop
+git pull origin develop
+git checkout -b release/v1.2.0
+
+# 2. Finalize a release (atualizar versão, changelog, etc.)
+# ... faça os ajustes finais ...
+
+# 3. Commit das alterações de release
+git add .
+git commit -m "release: prepare version 1.2.0"
+
+# 4. Merge em main
+git checkout main
+git merge --no-ff release/v1.2.0
+git tag v1.2.0
+
+# 5. Merge de volta em develop
+git checkout develop
+git merge --no-ff release/v1.2.0
+
+# 6. Envie as alterações
+git push origin main --tags
+git push origin develop
+
+# 7. Delete a branch release
+git branch -d release/v1.2.0
+git push origin --delete release/v1.2.0
+```
+
+## 🏷️ Padrão de Nomes de Branches
+
+- `feature/descricao-descritiva` - Novas funcionalidades
+- `bugfix/descricao-descritiva` - Correções de bugs
+- `hotfix/descricao-descritiva` - Correções críticas em produção
+- `release/vX.Y.Z` - Preparação de releases
+
+### Regras:
+- Use **minúsculas** e **hífens** para separar palavras
+- Seja **descritivo** e **conciso**
+- Use **inglês** para nomes de branches
+- Inclua **número da issue** quando aplicável: `feature/123-user-auth`
+
+## 🔄 Fluxo de Pull Requests
+
+### Diretrizes de Merge:
+
+1. **Feature/bugfix branches** → `develop`
+   - Requer 1 aprovação
+   - CI/CD deve passar
+   - Merge com squash ou rebase
+
+2. **Release branches** → `main`
+   - Requer 2 aprovações
+   - CI/CD deve passar
+   - Merge com merge commit (--no-ff)
+
+3. **Hotfix branches** → `main`
+   - Requer 2 aprovações (urgência pode reduzir para 1)
+   - CI/CD deve passar
+   - Merge com merge commit (--no-ff)
+
+### Template de Pull Request:
+
+```markdown
+## Descrição
+Breve descrição das alterações.
+
+## Tipo de Alteração
+- [ ] Bug fix
+- [ ] New feature
+- [ ] Breaking change
+- [ ] Documentation update
+
+## Issue Relacionada
+Fixes #123
+
+## Testes
+- [ ] Unit tests passando
+- [ ] Integration tests passando
+- [ ] Manual testing realizado
+
+## Checklist
+- [ ] Código segue os padrões do projeto
+- [ ] Commits seguem conventional commits
+- [ ] Documentação atualizada
+- [ ] Tests adicionados/atualizados
+```
+
 ## 🚀 Processo de Desenvolvimento
 
 ### 1. Setup do Ambiente

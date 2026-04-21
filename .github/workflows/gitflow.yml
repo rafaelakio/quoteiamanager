@@ -1,0 +1,71 @@
+name: GitFlow Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main, develop]
+
+jobs:
+  validate-branch-name:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Validate Branch Name
+        run: |
+          BRANCH_NAME="${{ github.head_ref || github.ref_name }}"
+          echo "Validating branch: $BRANCH_NAME"
+          
+          # Skip validation for main and develop
+          if [[ "$BRANCH_NAME" == "main" || "$BRANCH_NAME" == "develop" ]]; then
+            echo "Branch $BRANCH_NAME is allowed"
+            exit 0
+          fi
+          
+          # Check if branch follows GitFlow pattern
+          if [[ "$BRANCH_NAME" =~ ^(feature|bugfix|hotfix|release)/.+$ ]]; then
+            echo "Branch $BRANCH_NAME follows GitFlow pattern"
+          else
+            echo "Branch $BRANCH_NAME does not follow GitFlow pattern"
+            echo "Expected patterns: feature/*, bugfix/*, hotfix/*, release/*"
+            exit 1
+          fi
+
+  validate-merge-target:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Validate Merge Target
+        run: |
+          BASE_BRANCH="${{ github.base_ref }}"
+          HEAD_BRANCH="${{ github.head_ref }}"
+          
+          echo "PR: $HEAD_BRANCH → $BASE_BRANCH"
+          
+          # Feature and bugfix branches should merge to develop
+          if [[ "$HEAD_BRANCH" =~ ^(feature|bugfix)/.+$ ]]; then
+            if [[ "$BASE_BRANCH" != "develop" ]]; then
+              echo "Feature/bugfix branches should merge to develop, not $BASE_BRANCH"
+              exit 1
+            fi
+          fi
+          
+          # Hotfix branches should merge to main
+          if [[ "$HEAD_BRANCH" =~ ^hotfix/.+$ ]]; then
+            if [[ "$BASE_BRANCH" != "main" ]]; then
+              echo "Hotfix branches should merge to main, not $BASE_BRANCH"
+              exit 1
+            fi
+          fi
+          
+          # Release branches should merge to main
+          if [[ "$HEAD_BRANCH" =~ ^release/.+$ ]]; then
+            if [[ "$BASE_BRANCH" != "main" ]]; then
+              echo "Release branches should merge to main, not $BASE_BRANCH"
+              exit 1
+            fi
+          fi
+          
+          echo "Merge target validation passed"
