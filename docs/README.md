@@ -159,9 +159,11 @@ npm run dev -- -p 3001
 Se você ainda tiver dúvidas:
 
 - 📖 [Documentação Completa](../README.md)
-- 🐛 [Reportar Bug](https://github.com/username/quoteIAmanager/issues/new)
-- 💡 [Sugestão](https://github.com/username/quoteIAmanager/issues/new)
-- 📧 Email: contato@exemplo.com
+- 🐛 [Reportar Bug](https://github.com/rafaelakio/quoteIAmanager/issues/new)
+- 💡 [Sugestão](https://github.com/rafaelakio/quoteIAmanager/issues/new)
+- 📧 Email: rafaelakio@github.com
+- 💬 [Discord Community](https://discord.gg/quoteia-manager)
+- 📱 [LinkedIn](https://linkedin.com/in/rafaelakio)
 
 ## 🔄 Atualizações
 
