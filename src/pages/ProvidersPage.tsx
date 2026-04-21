@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, RotateCcw } from 'lucide-react'
 import { Modal } from '../components/Modal'
 import { QuotaBar } from '../components/QuotaBar'
 import type { Provider, ProviderStats } from '../types'
@@ -91,8 +91,8 @@ export function ProvidersPage({ providers, providerStats, onRefresh }: Props) {
     }
   }
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Remover este provedor e todos os seus registros de uso?')) return
+  const handleDelete = async (id: number, name: string) => {
+    if (!confirm(`Remover "${name}" e todos os seus registros de uso?`)) return
     await invoke('db:deleteProvider', id)
     onRefresh()
   }
@@ -143,7 +143,9 @@ export function ProvidersPage({ providers, providerStats, onRefresh }: Props) {
                   </div>
                   <div>
                     <p className="font-semibold text-white">{p.name}</p>
-                    <p className="text-xs text-slate-400">{p.slug}</p>
+                    <p className="text-xs text-slate-400">
+                      {fmtNum(p.monthlyQuota ?? 0)} {p.monthlyQuotaType === 'tokens' ? 'tokens' : p.monthlyQuotaType === 'requests' ? 'req' : 'USD'}/mês
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
@@ -162,7 +164,7 @@ export function ProvidersPage({ providers, providerStats, onRefresh }: Props) {
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
                   <button
-                    onClick={() => handleDelete(p.id)}
+                    onClick={() => handleDelete(p.id, p.name)}
                     className="p-1.5 rounded text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -175,15 +177,15 @@ export function ProvidersPage({ providers, providerStats, onRefresh }: Props) {
                   <QuotaBar percent={stats.percentUsed} color={p.color} showLabel size="sm" />
                   <div className="grid grid-cols-3 gap-2 text-center">
                     <div className="bg-slate-900/50 rounded-lg p-2">
-                      <p className="text-xs font-medium text-white">{fmtNum(stats.currentMonth.totalTokens)}</p>
+                      <p className="text-xs font-medium text-white">{fmtNum(stats.currentPeriod.totalTokens)}</p>
                       <p className="text-xs text-slate-500">tokens</p>
                     </div>
                     <div className="bg-slate-900/50 rounded-lg p-2">
-                      <p className="text-xs font-medium text-white">{stats.currentMonth.requestCount}</p>
+                      <p className="text-xs font-medium text-white">{stats.currentPeriod.requestCount}</p>
                       <p className="text-xs text-slate-500">req.</p>
                     </div>
                     <div className="bg-slate-900/50 rounded-lg p-2">
-                      <p className="text-xs font-medium text-white">${stats.currentMonth.costUsd.toFixed(2)}</p>
+                      <p className="text-xs font-medium text-white">${stats.currentPeriod.costUsd.toFixed(2)}</p>
                       <p className="text-xs text-slate-500">custo</p>
                     </div>
                   </div>
@@ -191,8 +193,19 @@ export function ProvidersPage({ providers, providerStats, onRefresh }: Props) {
               )}
 
               <div className="mt-3 pt-3 border-t border-slate-700/50 flex justify-between text-xs text-slate-400">
-                <span>Cota: {fmtNum(p.monthlyQuota)} {p.monthlyQuotaType === 'tokens' ? 'tok' : p.monthlyQuotaType === 'requests' ? 'req' : 'USD'}/mês</span>
-                <span>Alerta: {Math.round(p.alertThreshold * 100)}%</span>
+                <span>Alerta em {Math.round(p.alertThreshold * 100)}%</span>
+                {(() => {
+                  const s = getStats(p.id)
+                  if (!s?.resetConfig || !s.daysUntilReset === undefined) return null
+                  const days = s.daysUntilReset
+                  const color = days === undefined ? '' : days <= 1 ? 'text-red-400' : days <= 7 ? 'text-amber-400' : 'text-slate-400'
+                  return (
+                    <span className={`flex items-center gap-1 ${color}`}>
+                      <RotateCcw className="w-3 h-3" />
+                      {days === 0 ? 'Reset hoje' : days === 1 ? 'Reset amanhã' : `Reset em ${days}d`}
+                    </span>
+                  )
+                })()}
               </div>
             </div>
           )

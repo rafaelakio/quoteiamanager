@@ -1,7 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Save, RotateCcw, Zap, Copy, Check, CircleDot } from 'lucide-react'
-import type { AppSettings } from '../types'
+import { Save, RotateCcw, Zap, Copy, Check, CircleDot, Settings, Clock, Calendar } from 'lucide-react'
+import type { AppSettings, Provider, ProviderResetConfig } from '../types'
 import { useDb, useElectronEvent } from '../hooks/useDb'
+import { ConfigurationCenter } from '../components/ConfigurationCenter'
+import { PlanConfiguration } from '../components/PlanConfiguration'
+import { ResetConfiguration } from '../components/ResetConfiguration'
+import { ResetSchedulerStatus } from '../components/ResetSchedulerStatus'
 
 interface Props {
   settings: AppSettings
@@ -40,14 +44,28 @@ export function SettingsPage({ settings, onRefresh }: Props) {
   const [serverActive, setServerActive] = useState(false)
   const [lastPing, setLastPing] = useState<string | null>(null)
   const [hookScriptPath, setHookScriptPath] = useState('')
+  const [providers, setProviders] = useState<Provider[]>([])
+  const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null)
+  const [showPlanConfig, setShowPlanConfig] = useState(false)
+  const [showResetConfig, setShowResetConfig] = useState(false)
+  const [resetConfigs, setResetConfigs] = useState<ProviderResetConfig[]>([])
 
   useEffect(() => {
     invoke<string>('app:getHookScriptPath').then(p => setHookScriptPath(p)).catch(() => {})
+    // Load providers and reset configs (map snake_case IPC response to camelCase)
+    invoke<any[]>('db:getProviders').then(raws => setProviders(raws.map(r => ({
+      id: r.id, name: r.name, slug: r.slug, color: r.color, icon: r.icon,
+      apiKeyHint: r.api_key_hint, monthlyQuota: r.monthly_quota ?? 0,
+      monthlyQuotaType: r.monthly_quota_type ?? 'tokens',
+      alertThreshold: r.alert_threshold ?? 80,
+      isActive: Boolean(r.is_active), createdAt: r.created_at,
+    })))).catch(() => {})
+    invoke<ProviderResetConfig[]>('db:getResetConfigs').then(setResetConfigs).catch(() => {})
     // Check if server is reachable
     fetch(`http://127.0.0.1:${INGEST_PORT}/usage`, { method: 'OPTIONS' })
       .then(() => setServerActive(true))
       .catch(() => setServerActive(false))
-  }, [invoke])
+  }, [])
 
   const handleNewUsage = useCallback(() => {
     setLastPing(new Date().toLocaleTimeString('pt-BR'))
@@ -55,6 +73,37 @@ export function SettingsPage({ settings, onRefresh }: Props) {
   }, [onRefresh])
 
   useElectronEvent('usage:new', handleNewUsage)
+
+  const handleOpenPlanConfig = (provider: Provider) => {
+    setSelectedProvider(provider)
+    setShowPlanConfig(true)
+  }
+
+  const handleOpenResetConfig = (provider: Provider) => {
+    setSelectedProvider(provider)
+    setShowResetConfig(true)
+  }
+
+  const handleUpdateProvider = async (providerId: number, updates: Partial<Provider>) => {
+    try {
+      await invoke('db:updateProvider', providerId, updates)
+      // Refresh providers list
+      const updatedProviders = await invoke<Provider[]>('db:getProviders')
+      setProviders(updatedProviders)
+      onRefresh()
+    } catch (error) {
+      console.error('Error updating provider:', error)
+    }
+  }
+
+  const handleSaveResetConfig = async () => {
+    // Refresh reset configs
+    const updatedConfigs = await invoke<ProviderResetConfig[]>('db:getResetConfigs')
+    setResetConfigs(updatedConfigs)
+    setShowResetConfig(false)
+    setSelectedProvider(null)
+    onRefresh()
+  }
 
   const handleSave = async () => {
     setSaving(true)
@@ -92,7 +141,10 @@ export function SettingsPage({ settings, onRefresh }: Props) {
 
   return (
     <div className="flex-1 overflow-y-auto p-6">
-      <div className="max-w-2xl space-y-6">
+      <div className="max-w-4xl space-y-6">
+        {/* Configuration Center */}
+        <ConfigurationCenter />
+        
         <div>
           <h2 className="text-xl font-bold text-white">Configurações</h2>
           <p className="text-sm text-slate-400">Preferências do aplicativo</p>
@@ -145,6 +197,167 @@ export function SettingsPage({ settings, onRefresh }: Props) {
             </div>
           </div>
         </div>
+
+        {/* Configuração de Planos dos Providers */}
+        <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden">
+          <div className="p-4 border-b border-slate-700/50 flex items-center gap-2">
+            <Settings className="w-4 h-4 text-blue-400" />
+            <h3 className="text-sm font-semibold text-white">Planos e Limites dos Providers</h3>
+          </div>
+          <div className="p-4">
+            <p className="text-sm text-slate-400 mb-4">
+              Configure os planos contratados e limites de consumo para cada provider de IA.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {providers.map((provider) => (
+                <div
+                  key={provider.id}
+                  className="bg-slate-900/50 border border-slate-600 rounded-lg p-4"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-8 h-8 rounded-lg flex items-center justify-center"
+                        style={{ backgroundColor: `${provider.color}20` }}
+                      >
+                        <span className="text-sm font-bold" style={{ color: provider.color }}>
+                          {provider.name.charAt(0)}
+                        </span>
+                      </div>
+                      <div>
+                        <h4 className="text-white font-medium">{provider.name}</h4>
+                        <p className="text-xs text-slate-400">
+                          {provider.planType || 'Sem plano'} • {provider.monthlyQuotaType === 'tokens' ? 'Tokens' : provider.monthlyQuotaType === 'cost' ? 'Custo' : 'Requisições'}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleOpenPlanConfig(provider)}
+                      className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded-lg transition-colors"
+                    >
+                      Configurar
+                    </button>
+                  </div>
+                  <div className="space-y-2 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Limite atual:</span>
+                      <span className="text-white">
+                        {provider.monthlyQuotaType === 'tokens'
+                          ? `${((provider.monthlyQuota ?? 0) / 1000000).toFixed(1)}M tokens`
+                          : provider.monthlyQuotaType === 'cost'
+                          ? `$${(provider.monthlyQuota ?? 0).toLocaleString()}`
+                          : `${(provider.monthlyQuota ?? 0).toLocaleString()} reqs`
+                        }
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Alerta:</span>
+                      <span className="text-yellow-400">{Math.round((provider.alertThreshold ?? 0) * 100)}%</span>
+                    </div>
+                    {provider.customLimits && (
+                      <div className="pt-2 border-t border-slate-700">
+                        <span className="text-slate-400">Limites personalizados ativos</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {providers.length === 0 && (
+              <div className="text-center py-8 text-slate-500">
+                <Settings className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p className="text-sm">Nenhum provider configurado</p>
+                <p className="text-xs mt-1">Adicione providers na página principal para gerenciar planos</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Reset Periódico */}
+        <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl">
+          <div className="p-4 border-b border-slate-700/50">
+            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+              <RotateCcw className="w-4 h-4" />
+              Reset Periódico
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">
+              Configure quando os contadores de consumo devem ser zerados automaticamente
+            </p>
+          </div>
+          <div className="p-4 space-y-3">
+            {providers.filter(p => p.isActive).map(provider => {
+              const resetConfig = resetConfigs.find(c => c.providerId === provider.id)
+              return (
+                <div key={provider.id} className="bg-slate-900/50 border border-slate-700 rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div 
+                        className="w-3 h-3 rounded-full" 
+                        style={{ backgroundColor: provider.color }} 
+                      />
+                      <span className="text-sm font-medium text-white">{provider.name}</span>
+                    </div>
+                    <button
+                      onClick={() => handleOpenResetConfig(provider)}
+                      className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded-lg transition-colors"
+                    >
+                      {resetConfig ? 'Editar' : 'Configurar'}
+                    </button>
+                  </div>
+                  
+                  {resetConfig ? (
+                    <div className="space-y-1 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400">Tipo:</span>
+                        <span className="text-white">
+                          {resetConfig.resetType === 'daily' ? 'Diário' :
+                           resetConfig.resetType === 'weekly' ? 'Semanal' :
+                           resetConfig.resetType === 'monthly' ? 'Mensal' : 'Personalizado'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400">Horário:</span>
+                        <span className="text-white">{resetConfig.resetTime}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400">Timezone:</span>
+                        <span className="text-white">{resetConfig.timezone.split('/')[1]?.replace('_', ' ') || resetConfig.timezone}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400">Status:</span>
+                        <span className={resetConfig.isActive ? 'text-green-400' : 'text-slate-400'}>
+                          {resetConfig.isActive ? 'Ativo' : 'Inativo'}
+                        </span>
+                      </div>
+                      {resetConfig.nextResetAt && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-400">Próximo reset:</span>
+                          <span className="text-white">
+                            {new Date(resetConfig.nextResetAt).toLocaleDateString('pt-BR')}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-slate-400">
+                      Sem configuração de reset. Usa reset mensal padrão (dia 1).
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+            {providers.filter(p => p.isActive).length === 0 && (
+              <div className="text-center py-8 text-slate-500">
+                <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p className="text-sm">Nenhum provider ativo</p>
+                <p className="text-xs mt-1">Ative providers na página principal para configurar resets</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Reset Scheduler Status */}
+        <ResetSchedulerStatus />
 
         {/* Preferências */}
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl divide-y divide-slate-700/50">
@@ -268,6 +481,30 @@ export function SettingsPage({ settings, onRefresh }: Props) {
           </button>
         </div>
       </div>
+
+      {/* Modal de Configuração de Planos */}
+      {showPlanConfig && selectedProvider && (
+        <PlanConfiguration
+          provider={selectedProvider}
+          onUpdate={(updates) => handleUpdateProvider(selectedProvider.id, updates)}
+          onClose={() => {
+            setShowPlanConfig(false)
+            setSelectedProvider(null)
+          }}
+        />
+      )}
+
+      {/* Modal de Configuração de Reset */}
+      {showResetConfig && selectedProvider && (
+        <ResetConfiguration
+          provider={selectedProvider}
+          onClose={() => {
+            setShowResetConfig(false)
+            setSelectedProvider(null)
+          }}
+          onSave={handleSaveResetConfig}
+        />
+      )}
     </div>
   )
 }

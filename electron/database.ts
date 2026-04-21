@@ -1,6 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { app } from 'electron'
+import { ResetService } from './resetService'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -16,12 +17,28 @@ interface UsageRow {
   cost_usd: number; used_at: string; notes: string
 }
 
+interface ResetConfigRow {
+  id: number; provider_id: number; reset_type: string; reset_day?: number
+  reset_time: string; timezone: string; is_active: number
+  last_reset_at?: string; next_reset_at?: string; created_at: string; updated_at: string
+}
+
+interface ResetHistoryRow {
+  id: number; provider_id: number; reset_at: string; period_start: string
+  period_end: string; total_tokens: number; total_requests: number; total_cost: number
+  reset_type: string; timezone: string
+}
+
 interface DbData {
   providers: ProviderRow[]
   usage: UsageRow[]
+  resetConfigs: ResetConfigRow[]
+  resetHistory: ResetHistoryRow[]
   settings: Record<string, string>
   nextProviderId: number
   nextUsageId: number
+  nextResetConfigId: number
+  nextResetHistoryId: number
 }
 
 // ─── Storage ─────────────────────────────────────────────────────────────────
@@ -49,6 +66,8 @@ function loadDb(): DbData {
   _db = {
     providers: [],
     usage: [],
+    resetConfigs: [],
+    resetHistory: [],
     settings: {
       theme: 'system',
       currency: 'USD',
@@ -59,6 +78,8 @@ function loadDb(): DbData {
     },
     nextProviderId: 1,
     nextUsageId: 1,
+    nextResetConfigId: 1,
+    nextResetHistoryId: 1,
   }
   seedProviders(_db)
   saveDb()
@@ -93,6 +114,27 @@ function migrateDb(db: DbData) {
       changed = true
     }
   }
+  
+  // Initialize reset configs and history arrays if they don't exist
+  if (!db.resetConfigs) {
+    db.resetConfigs = []
+    db.nextResetConfigId = 1
+    changed = true
+  }
+  if (!db.resetHistory) {
+    db.resetHistory = []
+    db.nextResetHistoryId = 1
+    changed = true
+  }
+  if (!db.nextResetConfigId) {
+    db.nextResetConfigId = 1
+    changed = true
+  }
+  if (!db.nextResetHistoryId) {
+    db.nextResetHistoryId = 1
+    changed = true
+  }
+  
   if (changed) saveDb()
 }
 
@@ -302,4 +344,362 @@ export function updateSettings(settings: Record<string, string>) {
   Object.assign(db.settings, settings)
   saveDb()
   return db.settings
+}
+
+// ─── Reset Configurations ─────────────────────────────────────────────────────
+
+export function getResetConfigs(providerId?: number) {
+  const db = loadDb()
+  let configs = db.resetConfigs.slice()
+  
+  if (providerId) {
+    configs = configs.filter(c => c.provider_id === providerId)
+  }
+  
+  return configs.map(c => ({
+    id: c.id,
+    providerId: c.provider_id,
+    resetType: c.reset_type,
+    resetDay: c.reset_day,
+    resetTime: c.reset_time,
+    timezone: c.timezone,
+    isActive: Boolean(c.is_active),
+    lastResetAt: c.last_reset_at,
+    nextResetAt: c.next_reset_at,
+    createdAt: c.created_at,
+    updatedAt: c.updated_at
+  }))
+}
+
+export function addResetConfig(data: {
+  providerId: number; resetType: string; resetDay?: number
+  resetTime: string; timezone: string; isActive: boolean
+}) {
+  const db = loadDb()
+  const config = ResetService.createResetConfig({
+    providerId: data.providerId,
+    resetType: data.resetType as any,
+    resetDay: data.resetDay,
+    resetTime: data.resetTime,
+    timezone: data.timezone,
+    isActive: data.isActive,
+    lastResetAt: undefined,
+    nextResetAt: undefined,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  })
+  
+  const row: ResetConfigRow = {
+    id: db.nextResetConfigId++,
+    provider_id: config.providerId,
+    reset_type: config.resetType,
+    reset_day: config.resetDay,
+    reset_time: config.resetTime,
+    timezone: config.timezone,
+    is_active: config.isActive ? 1 : 0,
+    last_reset_at: config.lastResetAt,
+    next_reset_at: config.nextResetAt,
+    created_at: config.createdAt,
+    updated_at: config.updatedAt
+  }
+  
+  db.resetConfigs.push(row)
+  saveDb()
+  
+  return {
+    id: row.id,
+    providerId: row.provider_id,
+    resetType: row.reset_type,
+    resetDay: row.reset_day,
+    resetTime: row.reset_time,
+    timezone: row.timezone,
+    isActive: Boolean(row.is_active),
+    lastResetAt: row.last_reset_at,
+    nextResetAt: row.next_reset_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  }
+}
+
+export function updateResetConfig(id: number, data: Partial<{
+  resetType: string; resetDay?: number; resetTime: string
+  timezone: string; isActive: boolean
+}>) {
+  const db = loadDb()
+  const idx = db.resetConfigs.findIndex(c => c.id === id)
+  if (idx === -1) return null
+  
+  const config = db.resetConfigs[idx]
+  if (data.resetType !== undefined) config.reset_type = data.resetType
+  if (data.resetDay !== undefined) config.reset_day = data.resetDay
+  if (data.resetTime !== undefined) config.reset_time = data.resetTime
+  if (data.timezone !== undefined) config.timezone = data.timezone
+  if (data.isActive !== undefined) config.is_active = data.isActive ? 1 : 0
+  
+  config.updated_at = new Date().toISOString()
+  
+  // Recalculate next reset date
+  const configObj = {
+    id: config.id,
+    providerId: config.provider_id,
+    resetType: config.reset_type,
+    resetDay: config.reset_day,
+    resetTime: config.reset_time,
+    timezone: config.timezone,
+    isActive: Boolean(config.is_active),
+    lastResetAt: config.last_reset_at,
+    nextResetAt: config.next_reset_at,
+    createdAt: config.created_at,
+    updatedAt: config.updated_at
+  }
+  
+  const updated = ResetService.updateResetConfig(configObj)
+  config.next_reset_at = updated.nextResetAt
+  
+  saveDb()
+  
+  return {
+    id: config.id,
+    providerId: config.provider_id,
+    resetType: config.reset_type,
+    resetDay: config.reset_day,
+    resetTime: config.reset_time,
+    timezone: config.timezone,
+    isActive: Boolean(config.is_active),
+    lastResetAt: config.last_reset_at,
+    nextResetAt: config.next_reset_at,
+    createdAt: config.created_at,
+    updatedAt: config.updated_at
+  }
+}
+
+export function deleteResetConfig(id: number) {
+  const db = loadDb()
+  db.resetConfigs = db.resetConfigs.filter(c => c.id !== id)
+  saveDb()
+  return { success: true }
+}
+
+// ─── Reset History ────────────────────────────────────────────────────────────
+
+export function getResetHistory(providerId?: number, limit?: number) {
+  const db = loadDb()
+  let history = db.resetHistory.slice()
+  
+  if (providerId) {
+    history = history.filter(h => h.provider_id === providerId)
+  }
+  
+  history.sort((a, b) => b.reset_at.localeCompare(a.reset_at))
+  
+  if (limit) {
+    history = history.slice(0, limit)
+  }
+  
+  return history.map(h => ({
+    id: h.id,
+    providerId: h.provider_id,
+    resetAt: h.reset_at,
+    periodStart: h.period_start,
+    periodEnd: h.period_end,
+    totalTokens: h.total_tokens,
+    totalRequests: h.total_requests,
+    totalCost: h.total_cost,
+    resetType: h.reset_type,
+    timezone: h.timezone
+  }))
+}
+
+export function addResetHistory(data: {
+  providerId: number; resetAt: string; periodStart: string; periodEnd: string
+  totalTokens: number; totalRequests: number; totalCost: number
+  resetType: string; timezone: string
+}) {
+  const db = loadDb()
+  const row: ResetHistoryRow = {
+    id: db.nextResetHistoryId++,
+    provider_id: data.providerId,
+    reset_at: data.resetAt,
+    period_start: data.periodStart,
+    period_end: data.periodEnd,
+    total_tokens: data.totalTokens,
+    total_requests: data.totalRequests,
+    total_cost: data.totalCost,
+    reset_type: data.resetType,
+    timezone: data.timezone
+  }
+  
+  db.resetHistory.push(row)
+  saveDb()
+  
+  return {
+    id: row.id,
+    providerId: row.provider_id,
+    resetAt: row.reset_at,
+    periodStart: row.period_start,
+    periodEnd: row.period_end,
+    totalTokens: row.total_tokens,
+    totalRequests: row.total_requests,
+    totalCost: row.total_cost,
+    resetType: row.reset_type,
+    timezone: row.timezone
+  }
+}
+
+// ─── Reset Operations ─────────────────────────────────────────────────────────
+
+export async function performReset(providerId: number, configId: number) {
+  const db = loadDb()
+  const config = db.resetConfigs.find(c => c.id === configId && c.provider_id === providerId)
+  if (!config) {
+    throw new Error('Reset configuration not found')
+  }
+  
+  const configObj = {
+    id: config.id,
+    providerId: config.provider_id,
+    resetType: config.reset_type,
+    resetDay: config.reset_day,
+    resetTime: config.reset_time,
+    timezone: config.timezone,
+    isActive: Boolean(config.is_active),
+    lastResetAt: config.last_reset_at,
+    nextResetAt: config.next_reset_at,
+    createdAt: config.created_at,
+    updatedAt: config.updated_at
+  }
+  
+  // Perform the reset
+  const resetHistory = await ResetService.performReset(providerId, configObj)
+  
+  // Save reset history
+  const historyRecord = addResetHistory({
+    providerId: resetHistory.providerId,
+    resetAt: resetHistory.resetAt,
+    periodStart: resetHistory.periodStart,
+    periodEnd: resetHistory.periodEnd,
+    totalTokens: resetHistory.totalTokens,
+    totalRequests: resetHistory.totalRequests,
+    totalCost: resetHistory.totalCost,
+    resetType: resetHistory.resetType,
+    timezone: resetHistory.timezone
+  })
+  
+  // Update config with new reset dates
+  config.last_reset_at = resetHistory.resetAt
+  const updatedConfig = ResetService.updateResetConfig({
+    ...configObj,
+    lastResetAt: resetHistory.resetAt
+  })
+  config.next_reset_at = updatedConfig.nextResetAt
+  config.updated_at = updatedConfig.updatedAt
+  
+  saveDb()
+  
+  return historyRecord
+}
+
+export function getTimezones() {
+  return ResetService.getTimezones()
+}
+
+export function getProviderStatsWithReset() {
+  const db = loadDb()
+  const providers = db.providers.filter(p => p.is_active)
+  
+  return providers.map(p => {
+    const resetConfig = db.resetConfigs.find(c => c.provider_id === p.id && c.is_active)
+    
+    let periodStats
+    if (resetConfig) {
+      const configObj = {
+        id: resetConfig.id,
+        providerId: resetConfig.provider_id,
+        resetType: resetConfig.reset_type,
+        resetDay: resetConfig.reset_day,
+        resetTime: resetConfig.reset_time,
+        timezone: resetConfig.timezone,
+        isActive: Boolean(resetConfig.is_active),
+        lastResetAt: resetConfig.last_reset_at,
+        nextResetAt: resetConfig.next_reset_at,
+        createdAt: resetConfig.created_at,
+        updatedAt: resetConfig.updated_at
+      }
+      
+      periodStats = ResetService.getCurrentPeriodStats(p.id, configObj)
+    } else {
+      // Default to monthly behavior
+      const now = new Date()
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+      const monthlyUsage = db.usage.filter(u => u.provider_id === p.id && u.used_at >= startOfMonth)
+      
+      periodStats = monthlyUsage.reduce(
+        (acc, u) => ({
+          totalTokens: acc.totalTokens + u.total_tokens,
+          inputTokens: acc.inputTokens + u.input_tokens,
+          outputTokens: acc.outputTokens + u.output_tokens,
+          requestCount: acc.requestCount + u.request_count,
+          costUsd: acc.costUsd + u.cost_usd,
+          startDate: startOfMonth,
+          endDate: now.toISOString(),
+          daysUntilReset: undefined,
+          nextResetDate: undefined
+        }),
+        { 
+          totalTokens: 0, 
+          inputTokens: 0, 
+          outputTokens: 0, 
+          requestCount: 0, 
+          costUsd: 0,
+          startDate: startOfMonth,
+          endDate: now.toISOString(),
+          daysUntilReset: undefined,
+          nextResetDate: undefined
+        }
+      )
+    }
+    
+    const currentValue =
+      p.monthly_quota_type === 'tokens' ? periodStats.totalTokens
+      : p.monthly_quota_type === 'requests' ? periodStats.requestCount
+      : periodStats.costUsd
+
+    const percentUsed = p.monthly_quota > 0 ? currentValue / p.monthly_quota : 0
+    
+    return {
+      providerId: p.id,
+      providerName: p.name,
+      providerColor: p.color,
+      currentPeriod: {
+        totalTokens: periodStats.totalTokens,
+        inputTokens: periodStats.inputTokens,
+        outputTokens: periodStats.outputTokens,
+        requestCount: periodStats.requestCount,
+        costUsd: periodStats.costUsd,
+        startDate: periodStats.startDate,
+        endDate: periodStats.endDate
+      },
+      quota: p.monthly_quota,
+      quotaType: p.monthly_quota_type,
+      alertThreshold: p.alert_threshold,
+      percentUsed,
+      isOverQuota: percentUsed >= 1,
+      isNearQuota: percentUsed >= p.alert_threshold && percentUsed < 1,
+      resetConfig: resetConfig ? {
+        id: resetConfig.id,
+        providerId: resetConfig.provider_id,
+        resetType: resetConfig.reset_type,
+        resetDay: resetConfig.reset_day,
+        resetTime: resetConfig.reset_time,
+        timezone: resetConfig.timezone,
+        isActive: Boolean(resetConfig.is_active),
+        lastResetAt: resetConfig.last_reset_at,
+        nextResetAt: resetConfig.next_reset_at,
+        createdAt: resetConfig.created_at,
+        updatedAt: resetConfig.updated_at
+      } : undefined,
+      nextResetDate: periodStats.nextResetDate,
+      daysUntilReset: periodStats.daysUntilReset
+    }
+  })
 }

@@ -1,1 +1,11 @@
-"use strict";const r=require("electron"),i={invoke:(e,...n)=>r.ipcRenderer.invoke(e,...n),on:(e,n)=>{const o=(c,...t)=>n(...t);return r.ipcRenderer.on(e,o),()=>r.ipcRenderer.removeListener(e,o)}};r.contextBridge.exposeInMainWorld("electronAPI",i);
+"use strict";
+const electron = require("electron");
+const api = {
+  invoke: (channel, ...args) => electron.ipcRenderer.invoke(channel, ...args),
+  on: (channel, callback) => {
+    const handler = (_event, ...args) => callback(...args);
+    electron.ipcRenderer.on(channel, handler);
+    return () => electron.ipcRenderer.removeListener(channel, handler);
+  }
+};
+electron.contextBridge.exposeInMainWorld("electronAPI", api);

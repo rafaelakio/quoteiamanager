@@ -8,6 +8,8 @@ import { SettingsPage } from './pages/SettingsPage'
 import { Onboarding } from './pages/Onboarding'
 import { useAppState } from './store/appStore'
 import { useDb, useElectronEvent } from './hooks/useDb'
+import { NotificationCenter } from './components/NotificationCenter'
+import { NotificationService } from './services/notificationService'
 import type { Provider, UsageRecord, ProviderStats, AppSettings } from './types'
 
 interface DailyRow {
@@ -80,7 +82,7 @@ export default function App() {
     invoke<RawSettings>('db:getSettings').then(s => {
       setOnboardingDone(s.onboardingComplete === 'true')
     }).catch(() => setOnboardingDone(false))
-  }, [invoke])
+  }, []) // Remove invoke from dependencies to prevent infinite loop
 
   const loadAll = useCallback(async () => {
     setLoading(true)
@@ -89,7 +91,7 @@ export default function App() {
       const [rawProviders, rawUsage, rawStats, rawDaily, rawSettings] = await Promise.all([
         invoke<RawProvider[]>('db:getProviders'),
         invoke<RawUsage[]>('db:getUsageRecords', { limit: 200 }),
-        invoke<ProviderStats[]>('db:getProviderStats'),
+        invoke<ProviderStats[]>('db:getProviderStatsWithReset'),
         invoke<DailyRow[]>('db:getDailyUsage', 30),
         invoke<RawSettings>('db:getSettings'),
       ])
@@ -103,7 +105,8 @@ export default function App() {
     } finally {
       setLoading(false)
     }
-  }, [invoke, setLoading, setError, setProviders, setUsageRecords, setProviderStats, setDailyUsage, setSettings])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     loadAll()
@@ -111,6 +114,32 @@ export default function App() {
 
   // Refresh automatically when Claude Code hook pushes a new usage record
   useElectronEvent('usage:new', useCallback(() => loadAll(), [loadAll]))
+
+  // Handle reset scheduler events
+  useElectronEvent('reset:scheduled', useCallback((data: any) => {
+    console.log('Reset scheduled event:', data)
+    
+    if (data.type === 'reset-completed') {
+      const provider = state.providerStats.find(p => p.providerId === data.providerId)
+      if (provider) {
+        NotificationService.notifyResetCompleted(
+          provider.providerName,
+          data.resetHistory.resetType,
+          data.resetHistory.totalTokens,
+          data.resetHistory.totalCost
+        )
+      }
+      loadAll() // Refresh data to show updated stats
+    } else if (data.type === 'reset-error') {
+      const provider = state.providerStats.find(p => p.providerId === data.providerId)
+      if (provider) {
+        NotificationService.notifyResetError(
+          provider.providerName,
+          data.error
+        )
+      }
+    }
+  }, [state.providerStats, loadAll]))
 
   useEffect(() => {
     if (!state.settings.autoRefresh) return
@@ -138,8 +167,13 @@ export default function App() {
         providerStats={state.providerStats}
       />
       <main className="flex-1 flex flex-col min-w-0 relative">
+        {/* Notification Center */}
+        <div className="absolute top-3 right-3 z-20">
+          <NotificationCenter />
+        </div>
+        
         {state.loading && (
-          <div className="absolute top-3 right-3 z-10">
+          <div className="absolute top-3 right-16 z-10">
             <RefreshCw className="w-4 h-4 text-blue-400 animate-spin" />
           </div>
         )}
@@ -152,6 +186,7 @@ export default function App() {
           <Dashboard
             providerStats={state.providerStats}
             dailyUsage={state.dailyUsage as never}
+            onRefresh={loadAll}
           />
         )}
         {state.page === 'usage' && (

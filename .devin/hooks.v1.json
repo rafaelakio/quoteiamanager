@@ -1,0 +1,57 @@
+{
+  "PreToolUse": [
+    {
+      "matcher": "exec",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "node -e \"console.log(JSON.stringify({decision: 'approve', reason: 'Comando executado com monitoramento de cotas'}))\"",
+          "timeout": 5
+        }
+      ]
+    },
+    {
+      "matcher": "mcp_call_tool",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "node \"C:\\dev\\quoteIAmanager\\scripts\\monitor-api-usage.js\"",
+          "timeout": 10
+        }
+      ]
+    }
+  ],
+  "PostToolUse": [
+    {
+      "matcher": "exec",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "node \"C:\\dev\\quoteIAmanager\\scripts\\track-usage.js\"",
+          "timeout": 5
+        }
+      ]
+    }
+  ],
+  "UserPromptSubmit": [
+    {
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "Se o usuário mencionar APIs de IA (OpenAI, Anthropic, Google, etc.), extraia informações sobre modelo, tokens estimados e contexto para registro no QuoteIA Manager."
+        }
+      ]
+    }
+  ],
+  "SessionStart": [
+    {
+      "hooks": [
+        {
+          "type": "command",
+          "command": "node \"C:\\dev\\quoteIAmanager\\scripts\\session-start.js\"",
+          "timeout": 5
+        }
+      ]
+    }
+  ]
+}

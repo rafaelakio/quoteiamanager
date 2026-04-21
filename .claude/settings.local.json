@@ -15,7 +15,20 @@
       "WebSearch",
       "WebFetch(domain:brand.github.com)",
       "WebFetch(domain:cognition.ai)",
-      "WebFetch(domain:kiro.dev)"
+      "WebFetch(domain:kiro.dev)",
+      "Skill(update-config)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(npx vite *)",
+      "Read(//c/Users/Rafael/.devin//**)",
+      "Read(//c/Users/Rafael/AppData/Roaming/devin//**)",
+      "Read(//c/Users/Rafael/AppData/Local/devin//**)",
+      "Bash(where devin *)",
+      "Bash(devin --version)",
+      "Bash(devin version *)",
+      "Bash(devin *)",
+      "PowerShell(Get-ChildItem *)",
+      "Bash(sqlite3 \"/c/Users/Rafael/AppData/Roaming/devin/cli/sessions.db\" \".schema\")",
+      "Bash(python3 *)"
     ]
   }
 }
