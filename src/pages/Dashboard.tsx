@@ -1,5 +1,5 @@
-import { useMemo, useState, useEffect } from 'react'
-import { Brain, DollarSign, Hash, TrendingUp, AlertTriangle, RotateCcw, Calendar, Clock, AlertCircle } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Brain, DollarSign, Hash, TrendingUp, AlertTriangle, RotateCcw, Calendar, AlertCircle, ArrowUpDown, ArrowDownUp, AlignLeft } from 'lucide-react'
 import {
   XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
@@ -121,6 +121,8 @@ function ResetSection({ stats, onConfigure }: { stats: ProviderStats; onConfigur
 export function Dashboard({ providerStats, dailyUsage, onRefresh }: Props) {
   const [showResetConfig, setShowResetConfig] = useState(false)
   const [selectedProvider, setSelectedProvider] = useState<ProviderStats | null>(null)
+  type SortOrder = 'default' | 'consumption' | 'alpha'
+  const [sortOrder, setSortOrder] = useState<SortOrder>('default')
 
   const period = periodLabel(providerStats)
 
@@ -161,6 +163,16 @@ export function Dashboard({ providerStats, dailyUsage, onRefresh }: Props) {
       .map(s => ({ name: s.providerName, value: s.currentPeriod.totalTokens, color: s.providerColor })),
     [providerStats]
   )
+
+  const sortedStats = useMemo(() => {
+    const list = [...providerStats]
+    if (sortOrder === 'consumption') {
+      list.sort((a, b) => b.percentUsed - a.percentUsed)
+    } else if (sortOrder === 'alpha') {
+      list.sort((a, b) => a.providerName.localeCompare(b.providerName, 'pt-BR'))
+    }
+    return list
+  }, [providerStats, sortOrder])
 
   const alerts = providerStats.filter(s => s.isNearQuota || s.isOverQuota)
 
@@ -288,7 +300,49 @@ export function Dashboard({ providerStats, dailyUsage, onRefresh }: Props) {
 
       {/* Cotas + Reset unificados por provedor */}
       <div>
-        <h3 className="text-sm font-semibold text-white mb-3">Cotas dos provedores</h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-white">Cotas dos provedores</h3>
+          {providerStats.length > 1 && (
+            <div className="flex items-center gap-1 bg-slate-800/80 border border-slate-700/50 rounded-lg p-1">
+              <button
+                onClick={() => setSortOrder('default')}
+                title="Ordem padrão"
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs transition-colors ${
+                  sortOrder === 'default'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <AlignLeft className="w-3 h-3" />
+                Padrão
+              </button>
+              <button
+                onClick={() => setSortOrder('consumption')}
+                title="Maior consumo primeiro"
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs transition-colors ${
+                  sortOrder === 'consumption'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <ArrowDownUp className="w-3 h-3" />
+                Consumo
+              </button>
+              <button
+                onClick={() => setSortOrder('alpha')}
+                title="Ordem alfabética"
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs transition-colors ${
+                  sortOrder === 'alpha'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <ArrowUpDown className="w-3 h-3" />
+                A–Z
+              </button>
+            </div>
+          )}
+        </div>
         {providerStats.length === 0 ? (
           <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-8 text-center">
             <Brain className="w-10 h-10 text-slate-600 mx-auto mb-3" />
@@ -297,7 +351,7 @@ export function Dashboard({ providerStats, dailyUsage, onRefresh }: Props) {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {providerStats.map(s => (
+            {sortedStats.map(s => (
               <div key={s.providerId} className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
                 {/* Header */}
                 <div className="flex items-center gap-2 mb-3">

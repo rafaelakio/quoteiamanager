@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Save, RotateCcw, Zap, Copy, Check, CircleDot, Settings, Clock, Calendar } from 'lucide-react'
+import { Save, RotateCcw, Zap, Copy, Check, CircleDot, Settings, Clock } from 'lucide-react'
 import type { AppSettings, Provider, ProviderResetConfig } from '../types'
 import { useDb, useElectronEvent } from '../hooks/useDb'
 import { ConfigurationCenter } from '../components/ConfigurationCenter'

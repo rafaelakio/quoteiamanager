@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Bell, X, Check, AlertCircle, Info, CheckCircle, AlertTriangle, Trash2 } from 'lucide-react'
 import { NotificationService, Notification } from '../services/notificationService'
 

@@ -28,7 +28,9 @@
       "Bash(devin *)",
       "PowerShell(Get-ChildItem *)",
       "Bash(sqlite3 \"/c/Users/Rafael/AppData/Roaming/devin/cli/sessions.db\" \".schema\")",
-      "Bash(python3 *)"
+      "Bash(python3 *)",
+      "Bash(npx tsc *)",
+      "PowerShell(Set-Location \"C:\\\\dev\\\\quoteIAmanager\"; powershell -ExecutionPolicy Bypass -File \"scripts\\\\generate-icon.ps1\")"
     ]
   }
 }

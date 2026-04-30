@@ -78,7 +78,7 @@ export class ResetScheduler {
       this.sendNotification({
         type: 'reset-error',
         providerId: config.providerId,
-        error: error.message,
+        error: (error as Error).message,
         timestamp: new Date().toISOString()
       })
     }

@@ -1,6 +1,5 @@
-import React from 'react'
 import { RotateCcw, Clock, Calendar, AlertCircle } from 'lucide-react'
-import { ProviderStats, ProviderResetConfig } from '../types'
+import { ProviderStats } from '../types'
 
 interface ResetInfoCardProps {
   stats: ProviderStats

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Clock, Globe } from 'lucide-react'
 import { TimezoneInfo } from '../types'
 
@@ -12,7 +12,7 @@ interface TimezoneSelectorProps {
 export function TimezoneSelector({ value, onChange, disabled = false, className = '' }: TimezoneSelectorProps) {
   const [timezones, setTimezones] = useState<TimezoneInfo[]>([])
   const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
+  const [_searchTerm] = useState('')
 
   useEffect(() => {
     loadTimezones()
@@ -39,11 +39,6 @@ export function TimezoneSelector({ value, onChange, disabled = false, className 
       setLoading(false)
     }
   }
-
-  const filteredTimezones = timezones.filter(tz =>
-    tz.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    tz.value.toLowerCase().includes(searchTerm.toLowerCase())
-  )
 
   const selectedTimezone = timezones.find(tz => tz.value === value)
 

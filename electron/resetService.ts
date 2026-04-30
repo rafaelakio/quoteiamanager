@@ -1,4 +1,4 @@
-import { getProviders, getUsageRecords, addUsageRecord } from './database'
+import { getUsageRecords } from './database'
 
 export interface ResetConfig {
   id?: number
@@ -56,9 +56,6 @@ export class ResetService {
     const [hours, minutes] = config.resetTime.split(':').map(Number)
     
     let nextReset = new Date()
-    
-    // Set the timezone for calculation
-    const targetTimezone = config.timezone
     
     switch (config.resetType) {
       case 'daily':

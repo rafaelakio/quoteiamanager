@@ -10,7 +10,7 @@ import {
   getProviderStats, getDailyUsage,
   getSettings, updateSettings,
   getResetConfigs, addResetConfig, updateResetConfig, deleteResetConfig,
-  getResetHistory, addResetHistory, performReset, getTimezones, getProviderStatsWithReset
+  getResetHistory, performReset, getTimezones, getProviderStatsWithReset
 } from './database'
 import { startTranscriptWatcher, syncAllTranscripts } from './transcriptWatcher'
 import { startDevinWatcher, syncDevinSessions } from './devinWatcher'
@@ -200,7 +200,7 @@ ipcMain.handle('db:performReset', async (_e, providerId, configId) => {
   try {
     return await performReset(providerId, configId)
   } catch (error) {
-    throw new Error(error.message)
+    throw new Error((error as Error).message)
   }
 })
 

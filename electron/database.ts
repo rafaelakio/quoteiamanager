@@ -359,7 +359,7 @@ export function getResetConfigs(providerId?: number) {
   return configs.map(c => ({
     id: c.id,
     providerId: c.provider_id,
-    resetType: c.reset_type,
+    resetType: c.reset_type as 'monthly' | 'weekly' | 'daily' | 'custom',
     resetDay: c.reset_day,
     resetTime: c.reset_time,
     timezone: c.timezone,
@@ -384,9 +384,7 @@ export function addResetConfig(data: {
     timezone: data.timezone,
     isActive: data.isActive,
     lastResetAt: undefined,
-    nextResetAt: undefined,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    nextResetAt: undefined
   })
   
   const row: ResetConfigRow = {
@@ -442,7 +440,7 @@ export function updateResetConfig(id: number, data: Partial<{
   const configObj = {
     id: config.id,
     providerId: config.provider_id,
-    resetType: config.reset_type,
+    resetType: config.reset_type as 'monthly' | 'weekly' | 'daily' | 'custom',
     resetDay: config.reset_day,
     resetTime: config.reset_time,
     timezone: config.timezone,
@@ -452,7 +450,7 @@ export function updateResetConfig(id: number, data: Partial<{
     createdAt: config.created_at,
     updatedAt: config.updated_at
   }
-  
+
   const updated = ResetService.updateResetConfig(configObj)
   config.next_reset_at = updated.nextResetAt
   
@@ -558,7 +556,7 @@ export async function performReset(providerId: number, configId: number) {
   const configObj = {
     id: config.id,
     providerId: config.provider_id,
-    resetType: config.reset_type,
+    resetType: config.reset_type as 'monthly' | 'weekly' | 'daily' | 'custom',
     resetDay: config.reset_day,
     resetTime: config.reset_time,
     timezone: config.timezone,
@@ -568,7 +566,7 @@ export async function performReset(providerId: number, configId: number) {
     createdAt: config.created_at,
     updatedAt: config.updated_at
   }
-  
+
   // Perform the reset
   const resetHistory = await ResetService.performReset(providerId, configObj)
   
@@ -615,7 +613,7 @@ export function getProviderStatsWithReset() {
       const configObj = {
         id: resetConfig.id,
         providerId: resetConfig.provider_id,
-        resetType: resetConfig.reset_type,
+        resetType: resetConfig.reset_type as 'monthly' | 'weekly' | 'daily' | 'custom',
         resetDay: resetConfig.reset_day,
         resetTime: resetConfig.reset_time,
         timezone: resetConfig.timezone,
